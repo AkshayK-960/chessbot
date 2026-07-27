@@ -250,7 +250,7 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
         if (game.in_draw()) {
             return 0;
         }
-        return evaluateBoard();
+        return quiesce(alpha, beta, isMaximizingPlayer);
     }
 
     var possibleMoves = game.moves({ verbose: true });
@@ -320,4 +320,43 @@ function orderMoves(moves) {
     return moves.sort(function(a, b) {
         return b.sortScore - a.sortScore;
     });
+}
+
+function quiesce(alpha, beta, isMaximizingPlayer) {
+    var standPat = evaluateBoard();
+
+    if (isMaximizingPlayer) {
+        if (standPat >= beta) return beta;
+        if (standPat > alpha) alpha = standPat;
+    } else {
+        if (standPat <= alpha) return alpha;
+        if (standPat < beta) beta = standPat;
+    }
+
+    var moves = game.moves({ verbose: true });
+    var captures = moves.filter(move => move.flags.indexOf('c') !== -1);
+    
+    captures = orderMoves(captures);
+
+    if (isMaximizingPlayer) {
+        for (var i = 0; i < captures.length; i++) {
+            game.move(captures[i]);
+            var score = quiesce(alpha, beta, false);
+            game.undo();
+
+            if (score >= beta) return beta;
+            if (score > alpha) alpha = score;
+        }
+        return alpha;
+    } else {
+        for (var i = 0; i < captures.length; i++) {
+            game.move(captures[i]);
+            var score = quiesce(alpha, beta, true);
+            game.undo();
+
+            if (score <= alpha) return alpha;
+            if (score < beta) beta = score;
+        }
+        return beta;
+    }
 }
