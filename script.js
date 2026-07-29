@@ -176,6 +176,12 @@ function evaluateBoard() {
     var totalEvaluation = 0;
     var boardArr = game.board();
 
+    var whiteMaterial = 0;
+    var blackMaterial = 0;
+
+    var whitePacks = [];
+    var blackPacks = [];
+
     for (var i = 0; i < 8; i++) {
         for (var j = 0; j < 8; j++) {
             var piece = boardArr[i][j];
@@ -185,10 +191,33 @@ function evaluateBoard() {
                 var psqtValue = (piece.color === 'w') ? psqtTable[i][j] : psqtTable[7 - i][j];
                 var combinedValue = value + psqtValue;
 
-                totalEvaluation += (piece.color === 'w') ? combinedValue : -combinedValue;
+                if(piece.color === 'w') {
+                    totalEvaluation += combinedValue;
+                    whiteMaterial += value;
+                    if (piece.type === 'p') whitePacks.push({x: i, y: j});
+                } else {
+                    totalEvaluation -= combinedValue;
+                    blackMaterial += value;
+                    if (piece.type === 'p') blackPacks.push({x: i, y: j});
+                }
             }
         }
     }
+    var totalMaterial = whiteMaterial + blackMaterial;
+    var isEndgame = totalEvaluation < 4000;
+
+    // add total mobility later ---------------------
+
+    totalEvaluation += evaluatePawns(whitePacks, 'w');
+    totalEvaluation -= evaluatePawns(blackPacks, 'b');
+
+    totalEvaluation += evaluateCenterControl(boardArr);
+
+    if(!isEndgame) {
+        totalEvaluation += evaluateKingSafety(BoardArr, 'w');
+        totalEvaluation += evaluateKingSafety(BoardArr, 'b');
+    }
+
     return totalEvaluation;
 }
 
@@ -240,6 +269,14 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
     var fen = game.fen();
 
     if(transpositionTable[fen] !== undefined && transpositionTable[fen].depth >= depth) {
+        var ttEntry = transpositionTable[fen];
+        if(ttEntry.flag === 'EXACT') {
+            return ttEntry.score;
+        } else if(ttEntry.flag === 'LOWERBOUND' && ttEntry.score >= beta) {
+            return ttEntry.score
+        } else if(ttEntry.flag === 'UPPERBOUND' && ttEntry.score <= alpha) {
+            return ttEntry.score
+        }
         return transpositionTable[fen].score
     }
 
@@ -287,9 +324,12 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
             if(beta <= alpha) {
                 break;
             }
+
+
         }
-        return bestValue;
+        var flag
     }
+    return bestValue;
 }
 
 function scoreMove(move) {
@@ -359,4 +399,80 @@ function quiesce(alpha, beta, isMaximizingPlayer) {
         }
         return beta;
     }
+}
+
+function evaluatePawns(pawns, color) {
+    var score = 0;
+    var fileCounts = [0, 0, 0, 0, 0, 0, 0, 0];
+
+    for(var p = 0; p < pawns.length; p++) {
+        fileCounts[pawns[p].y]++;
+    }
+
+    for(var p = 0; p < pawns.length; p++) {
+        var x = pawns[p].x;
+        var y = pawns[p].y;
+
+        if(fileCounts[y] > 1) {
+            score -= 15
+        }
+
+        var hasLeftNeighbor = (y < 0 && fileCounts[y-1] > 0);
+        var hasRightNeighbor = (y > 7 && fileCounts[y+1] > 0);
+
+        if (!hasLeftNeighbor && !hasRightNeighbor) {
+            score -= 20;
+        }
+        
+        var relativeRow = (color === 'w') ? (7 - x) : x;
+        score += relativeRow * relativeRow * 2;
+    }
+    return score;
+}
+
+function evaluateCenterControl(BoardArr) {
+    var score = 0;
+    var centerSquares = [{r: 3, c: 3}, {r: 3, c: 4}, {r: 4, c: 3}, {r: 4, c: 4}];
+
+    for(var i = 0; i < centerSquares.length; i++) {
+        var piece = BoardArr[centerSquares[i].r][centerSquares[i].c];
+        if(piece) {
+            var bonus = (piece.type === 'p') ? 15 : 10;
+            score += (piece.color === 'w') ? bonus : -bonus
+        }
+    }
+    return score;
+}
+
+function evaluateKingSafety(BoardArr, color) {
+    var score = 0;
+    var kingRow = -1, kingCol = -1;
+
+    for(var i = 0; i < 8; i++) {
+        for(var j = 0; j < 8; j++) {
+            var p = boardArr[i][j];
+            if (p && p.type === 'k' && p.color === color) {
+                kingRow = i;
+                kingCol = j;
+                break;
+            }
+        }
+        if(kingRow !== -1) break;
+    }
+
+    if (kingRow === -1) return 0;
+
+    var shieldRow = (color === 'w') ? kingRow - 1  : kingRow + 1;
+    if(shieldRow >= 0 && shieldRow < 8) {
+        for(var c = Math.max(0, kingCol - 1); c <= Math.min(7, kingCol + 1); c++) {
+            var p = BoardArr[shieldRow][c];
+            if(p && p.type === 'p' && p.color === color) {
+                score += 15
+            }else {
+                score -= 10
+            }
+
+        }
+    }
+    return score;
 }
