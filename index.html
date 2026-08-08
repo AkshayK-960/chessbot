@@ -10,13 +10,30 @@
         <script src="./node_modules/jquery/dist/jquery.min.js"></script>
         <script src="./chess.min.js"></script>
         <script src="./chessboardjs-1.0.0/js/chessboard-1.0.0.min.js"></script>
+        
     </head>
 
     <body>
-        <div id="board1" style="width: 400px"></div>
+
+        <h1>Chess Bot</h1>
+        <div style="display: flex; align-items: flex-start; gap: 2vw; padding: 1vw 2vw;">
+            <div id="board1" style="width: 37vw; max-width: 600px;"></div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+
+
+                <div id="game-info" style="background-color: blanchedalmond; width: 50vw; padding: 10px; box-sizing: border-box;">
+                    <div id="fen" style="margin-top: 5px; color: rgb(255, 0, 0);"></div>
+                    <div id="pgn" style="margin-top: 5px; color: rgb(0, 115, 255);"></div>  
+                </div>
+                <div id="status" style="font-weight: bold;"></div>
+            </div>
+        </div>
+
+
+
+
         <div id="status" style="margin-top: 10px; font-weight: bold;"></div>
-        <div id="fen" style="margin-top: 5px; color: gray;"></div>
-        <div id="pgn" style="margin-top: 5px; color: gray;"></div>
+
 
         <script src="script.js"></script>
 
