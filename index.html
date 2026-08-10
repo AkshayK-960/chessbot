@@ -6,7 +6,7 @@
         <title>Chess Bot</title>
         
         <link rel="stylesheet" href="./chessboardjs-1.0.0/css/chessboard-1.0.0.min.css">
-
+        <link rel="stylesheet" href="./style.css">
         <script src="./node_modules/jquery/dist/jquery.min.js"></script>
         <script src="./chess.min.js"></script>
         <script src="./chessboardjs-1.0.0/js/chessboard-1.0.0.min.js"></script>
@@ -15,25 +15,38 @@
 
     <body>
 
-        <h1>Chess Bot</h1>
-        <div style="display: flex; align-items: flex-start; gap: 2vw; padding: 1vw 2vw;">
-            <div id="board1" style="width: 37vw; max-width: 600px;"></div>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
+        <header class="site-header">
+            <h1>Chess Bot</h1>
+        </header>
+        
+        <main class="main-container">
+            <div id="board1" class="chessboard-wrapper"></div>
 
 
-                <div id="game-info" style="background-color: blanchedalmond; width: 50vw; padding: 10px; box-sizing: border-box;">
-                    <div id="fen" style="margin-top: 5px; color: rgb(255, 0, 0);"></div>
-                    <div id="pgn" style="margin-top: 5px; color: rgb(0, 115, 255);"></div>  
+            <div class=sidebar>
+                <div id="game-info" class="card">
+                    <h2 id="eval" class="eval-text">0.0</h2>
+
+
+                    <h3>Game Status</h3>
+                    <div id="status" class="status-text"></div>
+
+                    <div class="data-group">
+                        <span class="label">FEN:</span>
+                        <div id="fen" class="code-text"></div>
+                    </div>
+                    
+                    <div class="data-group">
+                        <span class="label">PGN:</span>
+                        <div id="pgn" class="code-text"></div>
+
                 </div>
-                <div id="status" style="font-weight: bold;"></div>
             </div>
-        </div>
-
-
-
-
-        <div id="status" style="margin-top: 10px; font-weight: bold;"></div>
-
+            <div class="button-group">
+                <button id="start-button" class="btn btn-primary" onclick="location.reload()">New Game</button>
+                <button id="reset-button" class="btn btn-secondary" onclick="alert('working on functionality')">Reset Board</button>
+            </div>
+        </main>
 
         <script src="script.js"></script>
 

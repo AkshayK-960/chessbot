@@ -4,6 +4,9 @@ var $status = $('#status');
 var $fen = $('#fen');
 var $pgn = $('#pgn');
 
+
+
+
 var transpositionTable = {};
 var botColor = 'b';
 var maxDepth = 3;
@@ -180,6 +183,7 @@ function onDrop(source, target) {
     else {
         currentZobristKey = computeZobristKey();
         window.setTimeout(makeBestMove, 10);
+        window.setTimeout(findEvalStr, 30);
     }
     updateStatus();
 }
@@ -496,4 +500,19 @@ function quiesce(alpha, beta, isMaximizingPlayer, qDepth) {
         }
         return beta;
     }
+}
+
+function findEvalStr() {
+    var isMaximizing = (game.turn() === 'w');
+    var evalScore = minimax(2, -Infinity, Infinity, isMaximizing);
+
+    if(Math.abs(evalScore) > 900000) {
+        var mateIn = Math.round((1000000 - Math.abs(evalScore)) / 2);
+        var sign = evalScore > 0 ? '+' : '-'
+        document.getElementById("eval").textContent = ("M" + sign + mateIn);
+        return;
+    }
+
+    var evalUnits = (evalScore / 100).toFixed(1);
+    document.getElementById("eval").textContent = (evalUnits);
 }
