@@ -9,7 +9,7 @@ var $pgn = $('#pgn');
 
 var transpositionTable = {};
 var botColor = 'b';
-var maxDepth = 3;
+var maxDepth = 10;
 
 var zobristTable = {};
 var zobristTurnKey = 0;
@@ -26,6 +26,11 @@ var W_PIECES = {'p':'P', 'n':'N', 'b':'B', 'r':'R', 'q':'Q', 'k':'K'};
 var B_PIECES = {'p':'p', 'n':'n', 'b':'b', 'r':'r', 'q':'q', 'k':'k'};
 
 var killerMoves = []; 
+var historyHeuristic = {}; // maps moveKey -> score
+
+function moveKey(move) {
+    return (move.from || '') + (move.to || '') + (move.promotion || '');
+}
 
 function initializeZobrist() {
     var pieces = ['p', 'n', 'b', 'r', 'q', 'k', 'P', 'N', 'B', 'R', 'Q', 'K'];
@@ -68,7 +73,12 @@ function toggleMoveZobrist(move) {
 
     currentZobristKey ^= zobristTable[fromSq][movingChar];
     
-    if (move.captured) {
+    if(move.flags && move.flags.indexOf('e') !== -1) {
+        var capSqOffset = isWhite ? -8 : 8;
+        var capSq = toSq + capSqOffset;
+        var capChar = isWhite ? 'p' : 'P';
+        currentZobristKey ^= zobristTable[capSq][capChar];
+    } else if(move.captured) {
         var capChar = isWhite ? B_PIECES[move.captured] : W_PIECES[move.captured];
         currentZobristKey ^= zobristTable[toSq][capChar];
     }
@@ -217,40 +227,34 @@ board = Chessboard('board1', config);
 updateStatus();
 
 function evaluateBoard() {
-    var fen = game.fen();
+    var boardArr = game.board();
     var totalEval = 0;
-    var r = 0, c = 0;
-    
     var wPawns = [0,0,0,0,0,0,0,0];
     var bPawns = [0,0,0,0,0,0,0,0];
 
-    for (var i = 0; i < fen.length; i++) {
-        var char = fen[i];
-        if (char === ' ') break; 
-        if (char === '/') { r++; c = 0; continue; }
-        if (char >= '1' && char <= '8') { c += char.charCodeAt(0) - 48; continue; }
-        
-        var isWhite = (char < 'a');
-        var type = char.toLowerCase();
-        
-        var val = pieceValues[type];
-        var psqtTable = psqts[type];
-        var psqtValue = isWhite ? psqtTable[r][c] : psqtTable[7 - r][c];
-        
-        if (isWhite) {
-            totalEval += (val + psqtValue);
-            if (type === 'p') wPawns[c]++;
-        } else {
-            totalEval -= (val + psqtValue);
-            if (type === 'p') bPawns[c]++;
+    for (var r = 0; r < 8; r++) {
+        for (var c = 0; c < 8; c++) {
+            var piece = boardArr[r][c];
+            if (!piece) continue;
+            var type = piece.type;
+            var isWhite = piece.color === 'w';
+            var val = pieceValues[type];
+            var psqtTable = psqts[type];
+            var psqtValue = isWhite ? psqtTable[r][c] : psqtTable[7 - r][c];
+            if (isWhite) {
+                totalEval += (val + psqtValue);
+                if (type === 'p') wPawns[c]++;
+            } else {
+                totalEval -= (val + psqtValue);
+                if (type === 'p') bPawns[c]++;
+            }
         }
-        c++;
     }
-    
+
     for (var f = 0; f < 8; f++) {
         if (wPawns[f] > 1) totalEval -= 15;
         if (bPawns[f] > 1) totalEval += 15;
-        
+
         var wLeft = f > 0 ? wPawns[f-1] : 0;
         var wRight = f < 7 ? wPawns[f+1] : 0;
         if (wPawns[f] > 0 && wLeft === 0 && wRight === 0) totalEval -= 20;
@@ -281,7 +285,7 @@ function makeBestMove() {
 
     var bestMoveGlobal = possibleMoves[0];
     var currentDepth = 1;
-    var targetMaxDepth = 10;
+    var targetMaxDepth = maxDepth;
 
     while (currentDepth <= targetMaxDepth && !stopSearch) {
         var bestMoveThisDepth = null;
@@ -365,8 +369,16 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
         if (!isMaximizingPlayer && (staticEval + margin <= alpha)) return alpha;
     }
 
-    var possibleMoves = game.moves({ verbose: true });
-    possibleMoves = orderMoves(possibleMoves, ttBestMove, depth);
+    var possibleMoves;
+    var ttEntryCached = transpositionTable[ttKey];
+    if (ttEntryCached && ttEntryCached.orderedMoves) {
+        possibleMoves = ttEntryCached.orderedMoves;
+    } else {
+        possibleMoves = game.moves({ verbose: true });
+        possibleMoves = orderMoves(possibleMoves, ttBestMove, depth);
+        if (!transpositionTable[ttKey]) transpositionTable[ttKey] = { bestMove: null };
+        transpositionTable[ttKey].orderedMoves = possibleMoves;
+    }
 
     var bestValue = isMaximizingPlayer ? -Infinity : Infinity;
     var bestMoveAtNode = null;
@@ -404,6 +416,9 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
 
         if (beta <= alpha) {
             if (!move.captured) killerMoves[depth] = move.san;
+            // update history heuristic for quiet moves that cause cutoffs
+            var hk = moveKey(move);
+            historyHeuristic[hk] = (historyHeuristic[hk] || 0) + (depth * depth);
             break;
         }
     }
@@ -412,7 +427,12 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
     if (bestValue <= alphaOrig) flag = 'UPPERBOUND';
     else if (bestValue >= beta) flag = 'LOWERBOUND';
 
-    transpositionTable[ttKey] = { score: bestValue, depth: depth, flag: flag, bestMove: bestMoveAtNode };
+    var existing = transpositionTable[ttKey] || {};
+    existing.score = bestValue;
+    existing.depth = depth;
+    existing.flag = flag;
+    existing.bestMove = bestMoveAtNode;
+    transpositionTable[ttKey] = existing;
     
     return bestValue;
 }
@@ -431,11 +451,18 @@ function orderMoves(moves, ttBestMove, depth) {
             var victimValue = scorePieceValues[move.captured] || 1;
             var attackerValue = scorePieceValues[move.piece] || 1;
             move.sortScore = 10000 + (victimValue * 10 - attackerValue);
+        } else if (move.promotion) {
+            move.sortScore = 9000;
+        } else if (move.san && move.san.indexOf('+') !== -1) {
+            move.sortScore = 2000;
         } else if (killerSan && move.san === killerSan) {
-            move.sortScore = 5000;
+            move.sortScore = 1500;
         } else {
-            move.sortScore = move.promotion ? 900 : 0;
+            move.sortScore = 0;
         }
+        // apply history heuristic bonus
+        var hk = moveKey(move);
+        if (historyHeuristic[hk]) move.sortScore += historyHeuristic[hk];
     }
 
     return moves.sort(function(a, b) {
@@ -464,7 +491,7 @@ function quiesce(alpha, beta, isMaximizingPlayer, qDepth) {
     
     var captures = [];
     for (var i = 0; i < moves.length; i++) {
-        if (moves[i].captured) captures.push(moves[i]);
+        if (moves[i].captured || moves[i].promotion) captures.push(moves[i]);
     }
     
     if (captures.length === 0) return isMaximizingPlayer ? alpha : beta;
