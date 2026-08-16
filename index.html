@@ -4,7 +4,10 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Chess Bot</title>
-        
+        <link rel="preconnect" href="https://googleapis.com">
+        <link rel="preconnect" href="https://gstatic.com" crossorigin>
+        <link href="https://googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
         <link rel="stylesheet" href="./chessboardjs-1.0.0/css/chessboard-1.0.0.min.css">
         <link rel="stylesheet" href="./style.css">
         <script src="https://jquery.com"></script>
@@ -18,43 +21,63 @@
 
         <header class="site-header">
             <h1>Chess Bot</h1>
+            <nav class="tab-navigation">
+                <button id="nav-game" onclick="showSection('game-section')">game</button>
+                <button id="nav-how" onclick="showSection('how-it-works-section')">how it works</button>
+            </nav>
         </header>
-        
-        <main class="main-container">
-            <div id="board1" class="chessboard-wrapper"></div>
+        <div id="game-section">
+            <main class="main-container">
+                <div id="board1" class="chessboard-wrapper"></div>
 
 
-            <div class=sidebar>
-                <div id="game-info" class="card">
-                    <h2 id="eval" class="eval-text">0.0</h2>
+                <div class=sidebar>
+                    <div id="game-info" class="card">
+                        <h2 id="eval" class="eval-text">0.0</h2>
 
 
-                    <h3>Game Status</h3>
-                    <div id="status" class="status-text"></div>
+                        <h3>Game Status</h3>
+                        <div id="status" class="status-text"></div>
 
-                    <div class="data-group">
-                        <span class="label">FEN:</span>
-                        <div id="fen" class="code-text"></div>
+                        <div class="data-group">
+                            <span class="label">FEN:</span>
+                            <div id="fen" class="code-text"></div>
+                        </div>
+                        
+                        <div class="data-group">
+                            <span class="label">PGN:</span>
+                            <div id="pgn" class="code-text"></div>
+                        </div>
                     </div>
-                    
-                    <div class="data-group">
-                        <span class="label">PGN:</span>
-                        <div id="pgn" class="code-text"></div>
-
                 </div>
-            </div>
-            <div class="button-group">
-                <button id="start-button" class="btn btn-primary" onclick="location.reload()">New Game</button>
-                <button id="reset-button" class="btn btn-secondary" onclick="alert('working on functionality')">Reset Board</button>
-            </div>
-        </main>
+                <div class="button-group">
+                    <button id="start-button" class="btn btn-primary" onclick="location.reload()">New Game</button>
+                    <button id="reset-button" class="btn btn-secondary" onclick="alert('working on functionality')">Switch to Analysis Mode</button>
+                </div>
+            </main>            
+        </div>
+
 
         <script src="script.js"></script>
+        <br>
 
-        <style>
-            body {
-                background-color: rgba(165, 229, 255, 0.202);
+
+        <div id="how-it-works-section" style="display: none;">
+            <h3>How it Works</h3>
+            <p>For this project, I used chessboard.js to display the board, and chess.js to generate all the possible moves including castling, en passant, etc.</p>
+            <br>
+            <p>This program makes the best moves using an custom-made FEN evaluation algorithm. It parses the FEN string into an 8x8 grid using a for loop, and then runs it through all possible moves. I can get this list from calling "game.moves({ verbose: true });" and this generates a list of all moves. Since it takes a lot of time for it to generate the moves, I found it best practice to make a variable and get values from that instead. This helps keep the program running fast. </p>
+            <p>However, I ran into an error. since it only searches one depth deep it moved the knight out and kept moving the rook back and forth, and only captured when it needed to. This was bad, because it doesn't do any good moves, and it is easily beatable. One solution for this was to increase the depth of the bot. This just means how many moves in the bot looks for before finding the best move. So as of now, it looks at every move possible at a given position and from that position, it checks all possible moves from all the position, reaching a evaluation of 2 moves deep (or 2 plies deep)</p>
+        </div>
+
+        <script>
+            function showSection(sectionID) {
+                document.getElementById('game-section').style.display = 'none';
+                document.getElementById('how-it-works-section').style.display = 'none';
+                document.getElementById(sectionID).style.display = 'block';
             }
-        </style>
+
+        </script>
+
     </body>
 </html>
