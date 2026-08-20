@@ -543,3 +543,14 @@ function findEvalStr() {
     var evalUnits = (evalScore / 100).toFixed(1);
     document.getElementById("eval").textContent = (evalUnits);
 }
+
+function openLichessAnalysis() {
+    if (typeof game !== 'undefined' && game.fen) {
+        let currentFen = game.fen();
+        let formattedFen = currentFen.replace(/ /g, '_');
+        let lichessURL = `https://lichess.org{formattedFen}`;
+        window.open(lichessURL, '_blank')
+    } else {
+        console.error("chess instance not found");
+    }
+}
