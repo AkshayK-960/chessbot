@@ -1,5 +1,5 @@
 var board = null;
-var game = new Chess();
+var game = new FastBitboardEngine();
 var $status = $('#status');
 var $fen = $('#fen');
 var $pgn = $('#pgn');
@@ -181,20 +181,19 @@ var scorePieceValues = {'p' : 1, 'n' : 2, 'b' : 3, 'r' : 4, 'q' : 5, 'k' : 6};
 
 function onDragStart(source, piece, position, orientation) {
     if (game.game_over()) return false;
-    if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-        (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+    if ((game.turn() === 'w' && piece.startsWith('b')) ||
+        (game.turn() === 'b' && piece.startsWith('w'))) {
         return false;
     }
 }
 
 function onDrop(source, target) {
-    var move = game.move({ from: source, to: target, promotion: 'q' });
-    if (move === null) return 'snapback';
-    else {
-        currentZobristKey = computeZobristKey();
-        window.setTimeout(makeBestMove, 10);
-        window.setTimeout(findEvalStr, 30);
-    }
+    var moves = game.generateMoves();
+    var legalMove = moves.find(m => game.sqNames[m.fromSq] === source && game.sqNames[m.toSq] === target);
+
+    if (!legalMove) return 'snapback';
+    game.makeMove(legalMove);
+    window.setTimeout(makeBestMove, 10);
     updateStatus();
 }
 
@@ -209,9 +208,11 @@ function updateStatus() {
         status = moveColor + ' to move';
         if (game.in_check()) status += ' (King in check)';
     }
-    $status.html(status);
-    $fen.html(game.fen());
-    $pgn.html(game.pgn());
+    // $status.html(status);
+    // $fen.html(game.fen());
+    // $pgn.html(game.pgn());
+    $('#status').html(status);
+    $('#fen').html(game.fen());
 }
 
 var config = {
@@ -548,9 +549,12 @@ function openLichessAnalysis() {
     if (typeof game !== 'undefined' && game.fen) {
         let currentFen = game.fen();
         let formattedFen = currentFen.replace(/ /g, '_');
-        let lichessURL = `https://lichess.org{formattedFen}`;
+        let lichessURL = `https://lichess.org/analysis/${formattedFen}`;
         window.open(lichessURL, '_blank')
     } else {
         console.error("chess instance not found");
+        console.log("Alternatively, try copy-pasting the FEN or PGN into Lichess for current board analysis")
     }
 }
+
+console.log(openLichessAnalysis("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0"));
