@@ -4,9 +4,6 @@ var $status = $('#status');
 var $fen = $('#fen');
 var $pgn = $('#pgn');
 
-
-
-
 var transpositionTable = {};
 var botColor = 'b';
 var maxDepth = 10;
@@ -160,10 +157,12 @@ var scorePieceValues = {'p' : 1, 'n' : 2, 'b' : 3, 'r' : 4, 'q' : 5, 'k' : 6};
 function onDragStart(source, piece, position, orientation) {
     if (isGameOver()) return false;
     var isWhite = game.turn === 0;
-    if ((isWhite && piece.startsWith('b')) ||
-        (!isWhite && piece.startsWith('w'))) {
+    // Allow white to move (player is white)
+    if ((isWhite && piece.color() === 'black') ||
+        (!isWhite && piece.color() === 'white')) {
         return false;
     }
+    return true;
 }
 
 function onDrop(source, target) {
@@ -182,9 +181,13 @@ function onDrop(source, target) {
     
     if (!legalMove) return 'snapback';
     
-    game.makeMove(legalMove);
-    window.setTimeout(makeBestMove, 10);
+    if (!game.makeMove(legalMove)) {
+        return 'snapback';
+    }
+    
     updateStatus();
+    window.setTimeout(makeBestMove, 250);
+    return true;
 }
 
 function onSnapEnd() { 
@@ -197,8 +200,9 @@ function generateBoardPosition() {
         var piece = game.getPieceAt(sq);
         if (piece) {
             var sqName = game.sqNames[sq];
-            var isWhite = piece === piece.toUpperCase();
-            pos[sqName] = (isWhite ? 'w' : 'b') + piece.toUpperCase();
+            var color = piece === piece.toUpperCase() ? 'w' : 'b';
+            var pieceName = piece.toLowerCase();
+            pos[sqName] = color + pieceName;
         }
     }
     return pos;
