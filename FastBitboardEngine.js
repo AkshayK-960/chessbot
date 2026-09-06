@@ -113,6 +113,26 @@ class FastBitboardEngine {
         return `${this.sqNames[from]}-${this.sqNames[to]}`;
     }
 
+    board() {
+        let board = [];
+        for (let r = 0; r < 8; r++) {
+            let row = [];
+            for (let c = 0; c < 8; c++) {
+                let sq = r * 8 + c;
+                let piece = this.getPieceAt(sq);
+                if (piece) {
+                    row.push({
+                        type: piece.toLowerCase(),
+                        color: piece === piece.toUpperCase() ? 'w' : 'b'
+                    });
+                } else {
+                    row.push(null);
+                }
+            }
+            board.push(row);
+        }
+        return board;
+    }
 
     generateMoves(buffer = this.moveBuffer) {
         let count = 0;
@@ -161,10 +181,9 @@ class FastBitboardEngine {
         return legalCount;
     }
 
-//asdf
     makeMove(packedMove) {
         let from = this.decodeFrom(packedMove);
-        
+        let to = this.decodeTo(packedMove);
         let flags = this.decodeFlags(packedMove);
 
         let piece = this.getPieceAt(from);
@@ -295,5 +314,73 @@ class FastBitboardEngine {
         }
         fen += ` ${this.turn === 0 ? 'w' : 'b'} - - 0 1`;
         return fen;
+    }
+
+    moves({ verbose = false } = {}) {
+        let moveCount = this.generateMoves();
+        let result = [];
+        for (let i = 0; i < moveCount; i++) {
+            let move = this.moveBuffer[i];
+            if (verbose) {
+                let from = this.decodeFrom(move);
+                let to = this.decodeTo(move);
+                let piece = this.getPieceAt(from);
+                result.push({
+                    from: this.sqNames[from],
+                    to: this.sqNames[to],
+                    piece: piece ? piece.toLowerCase() : null,
+                    color: this.turn === 0 ? 'w' : 'b',
+                    san: this.parseSan(move),
+                    captured: this.getPieceAt(to)
+                });
+            } else {
+                result.push(this.parseSan(move));
+            }
+        }
+        return result;
+    }
+
+    move(moveObj) {
+        let from = this.sqMap[moveObj.from];
+        let to = this.sqMap[moveObj.to];
+        
+        let moveCount = this.generateMoves();
+        for (let i = 0; i < moveCount; i++) {
+            let move = this.moveBuffer[i];
+            if (this.decodeFrom(move) === from && this.decodeTo(move) === to) {
+                this.makeMove(move);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    undo() {
+        this.unmakeMove();
+    }
+
+    game_over() {
+        return this.generateMoves() === 0;
+    }
+
+    in_checkmate() {
+        return this.generateMoves() === 0;
+    }
+
+    in_check() {
+        let kingSq = this.getLSB(this.pieces[this.turn === 0 ? 'K' : 'k']);
+        return this.isSquareAttacked(kingSq, this.turn === 0 ? 1 : 0);
+    }
+
+    in_draw() {
+        return false;
+    }
+
+    turn() {
+        return this.turn === 0 ? 'w' : 'b';
+    }
+
+    pgn() {
+        return '';
     }
 }
