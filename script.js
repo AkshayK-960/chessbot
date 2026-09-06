@@ -167,8 +167,8 @@ function onDragStart(source, piece, position, orientation) {
 
 function onDrop(source, target) {
     var moveCount = game.generateMoves();
-    var sourceIdx = game.sqMap[source];
-    var targetIdx = game.sqMap[target];
+    var sourceIdx = SQUARE_MAP[source];
+    var targetIdx = SQUARE_MAP[target];
     
     var legalMove = null;
     for (var i = 0; i < moveCount; i++) {
@@ -187,11 +187,11 @@ function onDrop(source, target) {
     
     updateStatus();
     window.setTimeout(makeBestMove, 250);
-    return true;
+    // return true;
 }
 
 function onSnapEnd() { 
-    board.position(generateBoardPosition());
+    board.position(generateBoardPosition(), false);
 }
 
 function generateBoardPosition() {
