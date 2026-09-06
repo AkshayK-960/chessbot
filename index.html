@@ -11,7 +11,7 @@
         <link rel="stylesheet" href="./chessboardjs-1.0.0/css/chessboard-1.0.0.min.css">
         <link rel="stylesheet" href="./style.css">
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-        <script src="./chess.min.js"></script>
+        <script src="./FastBitboardEngine.js"></script>
         <script src="./chessboardjs-1.0.0/js/chessboard-1.0.0.min.js"></script>
         
     </head>
@@ -63,10 +63,10 @@
 
         <div id="how-it-works-section" style="display: none;">
             <h3>How it Works</h3>
-            <p>For this project, I used chessboard.js to display the board, and chess.js to generate all the possible moves including castling, en passant, etc.</p>
+            <p>For this project, I used chessboard.js to display the board, and FastBitboardEngine to generate all the possible moves including castling, en passant, etc.</p>
             <br>
-            <p>This program makes the best moves using an custom-made FEN evaluation algorithm. It parses the FEN string into an 8x8 grid using a for loop, and then runs it through all possible moves. I can get this list from calling "game.moves({ verbose: true });" and this generates a list of all moves. Since it takes a lot of time for it to generate the moves, I found it best practice to make a variable and get values from that instead. This helps keep the program running fast. </p>
-            <p>However, I ran into an error. since it only searches one depth deep it moved the knight out and kept moving the rook back and forth, and only captured when it needed to. This was bad, because it doesn't do any good moves, and it is easily beatable. One solution for this was to increase the depth of the bot. This just means how many moves in the bot looks for before finding the best move. So as of now, it looks at every move possible at a given position and from that position, it checks all possible moves from all the position, reaching a evaluation of 2 moves deep (or 2 plies deep)</p>
+            <p>This program makes the best moves using an custom-made FEN evaluation algorithm. It parses the FEN string into an 8x8 grid using a for loop, and then runs it through all possible mo[...]
+            <p>However, I ran into an error. since it only searches one depth deep it moved the knight out and kept moving the rook back and forth, and only captured when it needed to. This was ba[...]
         </div>
 
         <script>
