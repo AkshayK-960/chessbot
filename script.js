@@ -45,23 +45,20 @@ function initializeZobrist() {
 
 function computeZobristKey() {
     var hash = 0;
-    var boardArr = game.board();
-    for (var r = 0; r < 8; r++) {
-        for (var c = 0; c < 8; c++) {
-            var piece = boardArr[r][c];
-            if (piece) {
-                var sq = r * 8 + c;
-                var pieceChar = (piece.color === 'w') ? piece.type.toUpperCase() : piece.type.toLowerCase();
-                hash ^= zobristTable[sq][pieceChar];
-            }
+    for (var sq = 0; sq < 64; sq++) {
+        var piece = game.getPieceAt(sq);
+        if (piece) {
+            var pieceChar = (game.turn === 0) ? piece.toUpperCase() : piece.toLowerCase();
+            hash ^= zobristTable[sq][pieceChar];
         }
     }
-    if (game.turn() === 'b') {
+    if (game.turn === 1) {
         hash ^= zobristTurnKey;
     }
     return hash;
 }
 
+// Initialize Zobrist only after game is created
 initializeZobrist();
 var currentZobristKey = computeZobristKey();
 
@@ -160,22 +157,6 @@ var pieceValues = {
 
 var scorePieceValues = {'p' : 1, 'n' : 2, 'b' : 3, 'r' : 4, 'q' : 5, 'k' : 6};
 
-// Adapter functions to convert between FastBitboardEngine and chess.js-like format
-function getMoveFromEncoded(encodedMove) {
-    var from = game.decodeFrom(encodedMove);
-    var to = game.decodeTo(encodedMove);
-    var piece = game.getPieceAt(from);
-    
-    return {
-        from: game.sqNames[from],
-        to: game.sqNames[to],
-        piece: piece ? piece.toLowerCase() : null,
-        color: game.turn === 0 ? 'w' : 'b',
-        san: game.parseSan(encodedMove),
-        captured: game.getPieceAt(to)
-    };
-}
-
 function onDragStart(source, piece, position, orientation) {
     if (isGameOver()) return false;
     var isWhite = game.turn === 0;
@@ -215,7 +196,9 @@ function generateBoardPosition() {
     for (var sq = 0; sq < 64; sq++) {
         var piece = game.getPieceAt(sq);
         if (piece) {
-            pos[game.sqNames[sq]] = (game.turn === 0 ? piece.toUpperCase() : piece.toLowerCase());
+            var sqName = game.sqNames[sq];
+            var isWhite = piece === piece.toUpperCase();
+            pos[sqName] = (isWhite ? 'w' : 'b') + piece.toUpperCase();
         }
     }
     return pos;
