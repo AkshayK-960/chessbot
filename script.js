@@ -593,5 +593,3 @@ function openLichessAnalysis() {
         console.log("Alternatively, try copy-pasting the FEN or PGN into Lichess for current board analysis")
     }
 }
-
-console.log(openLichessAnalysis("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0"));
