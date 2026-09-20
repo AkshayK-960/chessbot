@@ -67,10 +67,15 @@
             <div class="card">
                 <h2>How it Works</h2>
                 <p>For this project, I used chessboard.js to display the board, and FastBitboardEngine to generate all the possible moves including castling, en passant, etc.</p>
-                <p>This program makes the best moves using a custom-made FEN evaluation algorithm. It parses the FEN string into an 8x8 grid using a for loop, and then runs it through all possible moves...</p>
-                <div class="note-box">
-                    <strong>Note:</strong> However, I ran into an error. Since it only searches one depth deep it moved the knight out and kept moving the rook back and forth, and only captured when it needed to.
+                <p>This program makes the best moves using a custom-made FEN evaluation algorithm. It parses the FEN string into an 8x8 grid using a for loop, and then runs it through all possible moves. </p>
+                <p>So, for example, the first ply (singular move) has a total of 20 possible moves/paths. On the second move, the number would increase to 400. And by the third ply calculation, there are over 8000 possible moves. Since this would take a very long time to calculate this, I decided to use a alpha-beta algorithm with minimax that largely cuts out the useless or bad moves.</p>
+                <div class="note-~box">
+                    <strong>Note: Note: The performance of this chess bot is reliant on the processing power. You can see how many moves deep it is searching, along with node information by checking out the console tab. (right-click -> Inspect -> switch over to console)</strong>
                 </div>
+                <p>Below is an image showing how Minimax works.</p>
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR1G2ebMkMBt9kj23uTDb2Ol3E6dhvZgtZiYnMgGoTLG5hZUBhtakq0qms:https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6f/Minimax.svg/500px-Minimax.svg.png%3Futm_source%3Den.wikipedia.org%26utm_campaign%3Dparser%26utm_content%3Dthumbnail&s">
+                <div class="note-box"><strong>Source: wikipedia.org</strong></div>
+                <p>I plan on updating this chess bot so it is more efficient; while it is good enough, it cannot consistently beat higher level bots (~1500+ ELO) like wally on chess.com. It also takes a lot of time for it to think and that could be something to build on.</p>
             </div>
         </div>
     </main>
