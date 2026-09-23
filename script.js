@@ -5,7 +5,7 @@ var $fen = $('#fen');
 var $pgn = $('#pgn');
 
 var transpositionTable = {};
-var botColor = 'b';
+var botColor = 'b'; // set to 'w' to play white, 'b' to play black
 var maxDepth = 10;
 
 var zobristTable = {};
@@ -66,6 +66,18 @@ function toggleMoveZobrist(fromSq, toSq, piece) {
     currentZobristKey ^= zobristTable[fromSq][movingChar];
     currentZobristKey ^= zobristTable[toSq][movingChar];
     currentZobristKey ^= zobristTurnKey;
+}
+
+function getBotTurnValue() {
+    return botColor === 'w' ? 0 : 1;
+}
+
+function getHumanColor() {
+    return botColor === 'w' ? 'black' : 'white';
+}
+
+function isBotTurn() {
+    return game.turn === getBotTurnValue();
 }
 
 var pawnTable = [
@@ -156,10 +168,10 @@ var scorePieceValues = {'p' : 1, 'n' : 2, 'b' : 3, 'r' : 4, 'q' : 5, 'k' : 6};
 
 function onDragStart(source, piece, position, orientation) {
     if (isGameOver()) return false;
-    var isWhite = game.turn === 0;
-    // Allow white to move (player is white)
-    if ((isWhite && piece.color() === 'black') ||
-        (!isWhite && piece.color() === 'white')) {
+    if (isBotTurn()) return false;
+
+    var pieceColor = piece.color();
+    if (pieceColor !== getHumanColor()) {
         return false;
     }
     return true;
@@ -186,7 +198,9 @@ function onDrop(source, target) {
     }
     
     updateStatus();
-    window.setTimeout(makeBestMove, 250);
+    if (isBotTurn()) {
+        window.setTimeout(makeBestMove, 250);
+    }
     // return true;
 }
 
@@ -240,6 +254,9 @@ var config = {
 
 board = Chessboard('board1', config);
 updateStatus();
+if (isBotTurn()) {
+    window.setTimeout(makeBestMove, 250);
+}
 
 function evaluateBoard() {
     var totalEval = 0;
@@ -289,6 +306,8 @@ var searchStartTime = 0;
 var stopSearch = false;
 
 function makeBestMove() {
+    if (!isBotTurn()) return;
+
     var moveCount = game.generateMoves();
     if (moveCount === 0) return;
 
