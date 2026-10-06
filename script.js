@@ -1,11 +1,25 @@
 var board = null;
-var game = new FastBitboardEngine();
-var $status = $('#status');
-var $fen = $('#fen');
-var $pgn = $('#pgn');
+var game = new Chess();
+var $status =$('#status');
+var $fen =$('#fen');
+var $pgn =$('#pgn');
+
+
+
 
 var transpositionTable = {};
-var botColor = 'b'; // set to 'w' to play white, 'b' to play black
+var botColor = 'b';
+function newGameClicked() {
+    let promptAns = prompt("What color do you want to play as? \nPick `w` for White, or `b` for Black.");
+    if (promptAns == 'w') {
+        botColor = 'b'
+    } else if (promptAns == 'b') {
+        botColor = 'w';
+    }
+
+}
+
+
 var maxDepth = 10;
 
 var zobristTable = {};
@@ -42,42 +56,52 @@ function initializeZobrist() {
 
 function computeZobristKey() {
     var hash = 0;
-    for (var sq = 0; sq < 64; sq++) {
-        var piece = game.getPieceAt(sq);
-        if (piece) {
-            var pieceChar = (game.turn === 0) ? piece.toUpperCase() : piece.toLowerCase();
-            hash ^= zobristTable[sq][pieceChar];
+    var boardArr = game.board();
+    for (var r = 0; r < 8; r++) {
+        for (var c = 0; c < 8; c++) {
+            var piece = boardArr[r][c];
+            if (piece) {
+                var sq = r * 8 + c;
+                var pieceChar = (piece.color === 'w') ? piece.type.toUpperCase() : piece.type.toLowerCase();
+                hash ^= zobristTable[sq][pieceChar];
+            }
         }
     }
-    if (game.turn === 1) {
+    if (game.turn() === 'b') {
         hash ^= zobristTurnKey;
     }
     return hash;
 }
 
-// Initialize Zobrist only after game is created
 initializeZobrist();
 var currentZobristKey = computeZobristKey();
 
-function toggleMoveZobrist(fromSq, toSq, piece) {
-    var isWhite = (game.turn === 0);
-    var movingChar = isWhite ? W_PIECES[piece] : B_PIECES[piece];
+function toggleMoveZobrist(move) {
+    var fromSq = SQUARE_MAP[move.from];
+    var toSq = SQUARE_MAP[move.to];
+    var isWhite = (move.color === 'w');
+    var movingChar = isWhite ? W_PIECES[move.piece] : B_PIECES[move.piece];
 
     currentZobristKey ^= zobristTable[fromSq][movingChar];
-    currentZobristKey ^= zobristTable[toSq][movingChar];
+    
+    if(move.flags && move.flags.indexOf('e') !== -1) {
+        var capSqOffset = isWhite ? -8 : 8;
+        var capSq = toSq + capSqOffset;
+        var capChar = isWhite ? 'p' : 'P';
+        currentZobristKey ^= zobristTable[capSq][capChar];
+    } else if(move.captured) {
+        var capChar = isWhite ? B_PIECES[move.captured] : W_PIECES[move.captured];
+        currentZobristKey ^= zobristTable[toSq][capChar];
+    }
+
+    if (move.promotion) {
+        var promoChar = isWhite ? W_PIECES[move.promotion] : B_PIECES[move.promotion];
+        currentZobristKey ^= zobristTable[toSq][promoChar];
+    } else {
+        currentZobristKey ^= zobristTable[toSq][movingChar];
+    }
+    
     currentZobristKey ^= zobristTurnKey;
-}
-
-function getBotTurnValue() {
-    return botColor === 'w' ? 0 : 1;
-}
-
-function getHumanColor() {
-    return botColor === 'w' ? 'black' : 'white';
-}
-
-function isBotTurn() {
-    return game.turn === getBotTurnValue();
 }
 
 var pawnTable = [
@@ -92,7 +116,7 @@ var pawnTable = [
 ];
 
 var knightTable = [
-    [  -50,  -20,  -30,  -30,  -30,  -30,  -20,  -50 ],
+    [  -50,  -10,  -30,  -30,  -30,  -30,  -10,  -50 ],
     [  -40,  -20,    0,    0,    0,    0,  -20,  -40 ],
     [  -30,    0,   10,   15,   15,   10,    0,  -30 ],
     [  -30,    5,   15,   20,   20,   15,    5,  -30 ],
@@ -167,85 +191,45 @@ var pieceValues = {
 var scorePieceValues = {'p' : 1, 'n' : 2, 'b' : 3, 'r' : 4, 'q' : 5, 'k' : 6};
 
 function onDragStart(source, piece, position, orientation) {
-    if (isGameOver()) return false;
-    if (isBotTurn()) return false;
-
-    var pieceColor = piece.color();
-    if (pieceColor !== getHumanColor()) {
+    if (game.game_over()) return false;
+    if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+        (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
         return false;
     }
-    return true;
 }
 
 function onDrop(source, target) {
-    var moveCount = game.generateMoves();
-    var sourceIdx = SQUARE_MAP[source];
-    var targetIdx = SQUARE_MAP[target];
+    var move = game.move({ from: source, to: target, promotion: 'q' });
+    if (move === null) return 'snapback';
     
-    var legalMove = null;
-    for (var i = 0; i < moveCount; i++) {
-        var move = game.moveBuffer[i];
-        if (game.decodeFrom(move) === sourceIdx && game.decodeTo(move) === targetIdx) {
-            legalMove = move;
-            break;
-        }
-    }
-    
-    if (!legalMove) return 'snapback';
-    
-    if (!game.makeMove(legalMove)) {
-        return 'snapback';
-    }
-    
+    currentZobristKey = computeZobristKey();
     updateStatus();
-    if (isBotTurn()) {
-        window.setTimeout(makeBestMove, 250);
+    
+    if (game.turn() === botColor && !game.game_over()) {
+        window.setTimeout(makeBestMove, 10);
+        window.setTimeout(findEvalStr, 30);
     }
-    // return true;
 }
 
-function onSnapEnd() { 
-    board.position(generateBoardPosition(), false);
-}
-
-function generateBoardPosition() {
-    var pos = {};
-    for (var sq = 0; sq < 64; sq++) {
-        var piece = game.getPieceAt(sq);
-        if (piece) {
-            var sqName = game.sqNames[sq];
-            var color = piece === piece.toUpperCase() ? 'w' : 'b';
-            var pieceName = piece.toLowerCase();
-            pos[sqName] = color + pieceName;
-        }
-    }
-    return pos;
-}
-
-function isGameOver() {
-    var moveCount = game.generateMoves();
-    return moveCount === 0;
-}
+function onSnapEnd() { board.position(game.fen()); }
 
 function updateStatus() {
     var status = '';
-    var isWhite = game.turn === 0;
-    var moveColor = isWhite ? 'White' : 'Black';
-    var moveCount = game.generateMoves();
-    
-    if (moveCount === 0) {
-        status = 'Game over, ' + moveColor + ' is in checkmate.';
-    } else {
+    var moveColor = game.turn() === 'b' ? 'Black' : 'White';
+    if (game.in_checkmate()) status = 'Game over, ' + moveColor + ' is in checkmate.';
+    else if (game.in_draw()) status = 'Game over, position is draw';
+    else {
         status = moveColor + ' to move';
+        if (game.in_check()) status += ' (King in check)';
     }
-    
-    $('#status').html(status);
-    $('#fen').html(game.fen());
+    $status.html(status);
+    $fen.html(game.fen());$pgn.html(game.pgn());
 }
 
 var config = {
     draggable: true,
     position: 'start',
+    orientation: botColor === 'w' ? 'black' : 'white',
     pieceTheme: 'chessboardjs-1.0.0/img/chesspieces/wikipedia/{piece}.png',
     onDragStart: onDragStart,
     onDrop: onDrop,
@@ -254,34 +238,33 @@ var config = {
 
 board = Chessboard('board1', config);
 updateStatus();
-if (isBotTurn()) {
+
+if (game.turn() === botColor) {
     window.setTimeout(makeBestMove, 250);
 }
 
 function evaluateBoard() {
+    var boardArr = game.board();
     var totalEval = 0;
     var wPawns = [0,0,0,0,0,0,0,0];
     var bPawns = [0,0,0,0,0,0,0,0];
 
-    for (var sq = 0; sq < 64; sq++) {
-        var piece = game.getPieceAt(sq);
-        if (!piece) continue;
-        
-        var type = piece.toLowerCase();
-        var isWhite = piece === piece.toUpperCase();
-        var val = pieceValues[type];
-        var psqtTable = psqts[type];
-        
-        var r = Math.floor(sq / 8);
-        var c = sq % 8;
-        var psqtValue = isWhite ? psqtTable[r][c] : psqtTable[7 - r][c];
-        
-        if (isWhite) {
-            totalEval += (val + psqtValue);
-            if (type === 'p') wPawns[c]++;
-        } else {
-            totalEval -= (val + psqtValue);
-            if (type === 'p') bPawns[c]++;
+    for (var r = 0; r < 8; r++) {
+        for (var c = 0; c < 8; c++) {
+            var piece = boardArr[r][c];
+            if (!piece) continue;
+            var type = piece.type;
+            var isWhite = piece.color === 'w';
+            var val = pieceValues[type];
+            var psqtTable = psqts[type];
+            var psqtValue = isWhite ? psqtTable[r][c] : psqtTable[7 - r][c];
+            if (isWhite) {
+                totalEval += (val + psqtValue);
+                if (type === 'p') wPawns[c]++;
+            } else {
+                totalEval -= (val + psqtValue);
+                if (type === 'p') bPawns[c]++;
+            }
         }
     }
 
@@ -306,10 +289,8 @@ var searchStartTime = 0;
 var stopSearch = false;
 
 function makeBestMove() {
-    if (!isBotTurn()) return;
-
-    var moveCount = game.generateMoves();
-    if (moveCount === 0) return;
+    var possibleMoves = game.moves({ verbose: true });
+    if (possibleMoves.length === 0) return;
 
     transpositionTable = {}; 
     killerMoves = []; 
@@ -319,39 +300,33 @@ function makeBestMove() {
 
     currentZobristKey = computeZobristKey();
 
-    var bestMoveGlobal = null;
+    var bestMoveGlobal = possibleMoves[0];
     var currentDepth = 1;
     var targetMaxDepth = maxDepth;
 
     while (currentDepth <= targetMaxDepth && !stopSearch) {
         var bestMoveThisDepth = null;
-        var bestValue = (game.turn === 1) ? Infinity : -Infinity;
+        var bestValue = (game.turn() === 'b') ? Infinity : -Infinity;
         var alpha = -Infinity;
         var beta = Infinity;
 
         var ttEntry = transpositionTable[currentZobristKey];
         var ttBestMove = ttEntry ? ttEntry.bestMove : null;
 
-        var possibleMoves = [];
-        for (var i = 0; i < moveCount; i++) {
-            possibleMoves.push(game.moveBuffer[i]);
-        }
-        possibleMoves = orderMovesEncoded(possibleMoves, ttBestMove, currentDepth);
+        possibleMoves = orderMoves(possibleMoves, ttBestMove, currentDepth);
 
         for (var i = 0; i < possibleMoves.length; i++) {
             var currentMove = possibleMoves[i];
-            var fromSq = game.decodeFrom(currentMove);
-            var piece = game.getPieceAt(fromSq);
 
-            toggleMoveZobrist(fromSq, game.decodeTo(currentMove), piece);
-            game.makeMove(currentMove);
-            var boardValue = minimax(currentDepth - 1, alpha, beta, game.turn === 0);
-            game.unmakeMove();
-            toggleMoveZobrist(fromSq, game.decodeTo(currentMove), piece);
+            toggleMoveZobrist(currentMove);
+            game.move(currentMove);
+            var boardValue = minimax(currentDepth - 1, alpha, beta, game.turn() === 'w');
+            game.undo();
+            toggleMoveZobrist(currentMove);
 
             if (stopSearch) break;
 
-            if (game.turn === 1) {
+            if (game.turn() === 'b') {
                 if (boardValue < bestValue) { bestValue = boardValue; bestMoveThisDepth = currentMove; }
                 beta = Math.min(beta, bestValue);
             } else {
@@ -362,20 +337,18 @@ function makeBestMove() {
 
         if (!stopSearch && bestMoveThisDepth) {
             bestMoveGlobal = bestMoveThisDepth;
-            console.log('Depth ' + currentDepth + ' completed in ' + (Date.now() - searchStartTime) + 'ms (' + nodeCount + ' nodes). Best move: ' + game.parseSan(bestMoveGlobal));
+            console.log(`Depth ${currentDepth} completed in ${Date.now() - searchStartTime}ms (${nodeCount} nodes). Best move: ${bestMoveGlobal.san}`);
             currentDepth++;
         } else break;
     }
 
     if (bestMoveGlobal) {
-        var fromSq = game.decodeFrom(bestMoveGlobal);
-        var piece = game.getPieceAt(fromSq);
-        toggleMoveZobrist(fromSq, game.decodeTo(bestMoveGlobal), piece);
-        game.makeMove(bestMoveGlobal);
-        board.position(generateBoardPosition());
+        toggleMoveZobrist(bestMoveGlobal);
+        game.move(bestMoveGlobal);
+        board.position(game.fen());
         updateStatus();
-        console.log('Time limit reached. Best Move --> ' + game.parseSan(bestMoveGlobal));
-        console.log('');
+        console.log('Time limit reached. Best Move  --> ' + bestMoveGlobal.san);
+        console.log('')
     }
 }
 
@@ -400,13 +373,13 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
         }
     }
 
-    var moveCount = game.generateMoves();
-    if (depth === 0 || moveCount === 0) {
-        if (moveCount === 0) return isMaximizingPlayer ? -999999 + depth : 999999 - depth;
+    if (depth === 0 || game.game_over()) {
+        if (game.in_checkmate()) return isMaximizingPlayer ? -999999 + depth : 999999 - depth;
+        if (game.in_draw()) return 0;
         return quiesce(alpha, beta, isMaximizingPlayer, 0);
     }
     
-    if (depth <= 2) {
+    if (depth <= 2 && !game.in_check()) {
         var staticEval = evaluateBoard();
         var margin = 120 * depth; 
         if (isMaximizingPlayer && (staticEval - margin >= beta)) return beta;
@@ -418,11 +391,8 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
     if (ttEntryCached && ttEntryCached.orderedMoves) {
         possibleMoves = ttEntryCached.orderedMoves;
     } else {
-        possibleMoves = [];
-        for (var i = 0; i < moveCount; i++) {
-            possibleMoves.push(game.moveBuffer[i]);
-        }
-        possibleMoves = orderMovesEncoded(possibleMoves, ttBestMove, depth);
+        possibleMoves = game.moves({ verbose: true });
+        possibleMoves = orderMoves(possibleMoves, ttBestMove, depth);
         if (!transpositionTable[ttKey]) transpositionTable[ttKey] = { bestMove: null };
         transpositionTable[ttKey].orderedMoves = possibleMoves;
     }
@@ -432,18 +402,14 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
 
     for (var i = 0; i < possibleMoves.length; i++) {
         var move = possibleMoves[i];
-        var fromSq = game.decodeFrom(move);
-        var toSq = game.decodeTo(move);
-        var piece = game.getPieceAt(fromSq);
 
-        toggleMoveZobrist(fromSq, toSq, piece);
-        game.makeMove(move);
+        toggleMoveZobrist(move);
+        game.move(move);
         
         var score;
-        var targetPiece = game.getPieceAt(toSq);
-        var isCapture = targetPiece !== null;
+        var isCheck = move.san.indexOf('+') !== -1;
         
-        if (i < 4 || isCapture || depth < 3) {
+        if (i < 4 || move.captured || move.promotion || isCheck || depth < 3) {
             score = minimax(depth - 1, alpha, beta, !isMaximizingPlayer);
         } else {
             score = minimax(depth - 2, alpha, beta, !isMaximizingPlayer);
@@ -452,8 +418,8 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
             }
         }
 
-        game.unmakeMove();
-        toggleMoveZobrist(fromSq, toSq, piece);
+        game.undo();
+        toggleMoveZobrist(move);
 
         if (stopSearch) return 0;
 
@@ -466,7 +432,9 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
         }
 
         if (beta <= alpha) {
-            var hk = moveKey({ from: game.sqNames[fromSq], to: game.sqNames[toSq] });
+            if (!move.captured) killerMoves[depth] = move.san;
+            // update history heuristic for quiet moves that cause cutoffs
+            var hk = moveKey(move);
             historyHeuristic[hk] = (historyHeuristic[hk] || 0) + (depth * depth);
             break;
         }
@@ -486,34 +454,34 @@ function minimax(depth, alpha, beta, isMaximizingPlayer) {
     return bestValue;
 }
 
-function orderMovesEncoded(moves, ttBestMove, depth) {
+function orderMoves(moves, ttBestMove, depth) {
     if (moves.length <= 1) return moves;
 
-    var ttSan = (ttBestMove !== null) ? game.parseSan(ttBestMove) : null;
+    var ttSan = (ttBestMove && ttBestMove.san) ? ttBestMove.san : null;
     var killerSan = killerMoves[depth] || null;
 
     for (var i = 0; i < moves.length; i++) {
         var move = moves[i];
-        var moveSan = game.parseSan(move);
-        var toSq = game.decodeTo(move);
-        var targetPiece = game.getPieceAt(toSq);
-        
-        if (ttSan && moveSan === ttSan) {
+        if (ttSan && move.san === ttSan) {
             move.sortScore = 100000;
-        } else if (targetPiece) {
-            var fromSq = game.decodeFrom(move);
-            var attackerPiece = game.getPieceAt(fromSq);
-            var victimValue = scorePieceValues[targetPiece.toLowerCase()] || 1;
-            var attackerValue = scorePieceValues[attackerPiece.toLowerCase()] || 1;
+        } else if (move.captured) {
+            var victimValue = scorePieceValues[move.captured] || 1;
+            var attackerValue = scorePieceValues[move.piece] || 1;
             move.sortScore = 10000 + (victimValue * 10 - attackerValue);
-        } else if (killerSan && moveSan === killerSan) {
+        } else if (move.promotion) {
+            move.sortScore = 9000;
+        } else if (move.san && move.san.indexOf('+') !== -1) {
+            move.sortScore = 2000;
+        } else if (killerSan && move.san === killerSan) {
             move.sortScore = 1500;
+        } else if (move.san && move.san.indexOf('+') !== -1) {
+            move.sortScore += 100000;
         } else {
             move.sortScore = 0;
         }
-        
-        var moveKey = game.sqNames[game.decodeFrom(move)] + game.sqNames[game.decodeTo(move)];
-        if (historyHeuristic[moveKey]) move.sortScore += historyHeuristic[moveKey];
+        // apply history heuristic bonus
+        var hk = moveKey(move);
+        if (historyHeuristic[hk]) move.sortScore += historyHeuristic[hk];
     }
 
     return moves.sort(function(a, b) {
@@ -538,30 +506,26 @@ function quiesce(alpha, beta, isMaximizingPlayer, qDepth) {
 
     if (qDepth >= 3) return isMaximizingPlayer ? alpha : beta;
 
-    var moveCount = game.generateMoves();
+    var moves = game.moves({ verbose: true });
+    
     var captures = [];
-    for (var i = 0; i < moveCount; i++) {
-        var move = game.moveBuffer[i];
-        var toSq = game.decodeTo(move);
-        var targetPiece = game.getPieceAt(toSq);
-        if (targetPiece) captures.push(move);
+    for (var i = 0; i < moves.length; i++) {
+        if (moves[i].captured || moves[i].promotion) captures.push(moves[i]);
     }
     
     if (captures.length === 0) return isMaximizingPlayer ? alpha : beta;
 
-    captures = orderMovesEncoded(captures, null, 0);
+    captures = orderMoves(captures, null, 0);
 
     if (isMaximizingPlayer) {
         for (var i = 0; i < captures.length; i++) {
             var move = captures[i];
-            var fromSq = game.decodeFrom(move);
-            var piece = game.getPieceAt(fromSq);
 
-            toggleMoveZobrist(fromSq, game.decodeTo(move), piece);
-            game.makeMove(move);
+            toggleMoveZobrist(move);
+            game.move(move);
             var score = quiesce(alpha, beta, false, qDepth + 1);
-            game.unmakeMove();
-            toggleMoveZobrist(fromSq, game.decodeTo(move), piece);
+            game.undo();
+            toggleMoveZobrist(move);
 
             if (score >= beta) return beta;
             if (score > alpha) alpha = score;
@@ -570,14 +534,12 @@ function quiesce(alpha, beta, isMaximizingPlayer, qDepth) {
     } else {
         for (var i = 0; i < captures.length; i++) {
             var move = captures[i];
-            var fromSq = game.decodeFrom(move);
-            var piece = game.getPieceAt(fromSq);
 
-            toggleMoveZobrist(fromSq, game.decodeTo(move), piece);
-            game.makeMove(move);
+            toggleMoveZobrist(move);
+            game.move(move);
             var score = quiesce(alpha, beta, true, qDepth + 1);
-            game.unmakeMove();
-            toggleMoveZobrist(fromSq, game.decodeTo(move), piece);
+            game.undo();
+            toggleMoveZobrist(move);
 
             if (score <= alpha) return alpha;
             if (score < beta) beta = score;
@@ -587,11 +549,12 @@ function quiesce(alpha, beta, isMaximizingPlayer, qDepth) {
 }
 
 function findEvalStr() {
-    var isMaximizing = (game.turn === 0);
+    var isMaximizing = (game.turn() === 'w');
     var evalScore = minimax(2, -Infinity, Infinity, isMaximizing);
 
     if(Math.abs(evalScore) > 900000) {
-        var mateIn = Math.round((1000000 - Math.abs(evalScore)) / 2);
+        var plies = 1000000 - Math.abs(evalScore);
+        var mateIn = Math.ceil(plies / 2)
         var sign = evalScore > 0 ? '+' : '-'
         document.getElementById("eval").textContent = ("M" + sign + mateIn);
         return;
@@ -599,16 +562,20 @@ function findEvalStr() {
 
     var evalUnits = (evalScore / 100).toFixed(1);
     document.getElementById("eval").textContent = (evalUnits);
+    if(evalScore > 0) evalUnits = "+" + evalUnits
 }
+
+// 1. d4 Nf6 2. Bf4 Nd5 3. e3 Nxf4 4. exf4 Nc6 5. d5 Nb4 6. Qd4 Nxc2+ 7. Ke2 Nxd4+ 8. Kd3 CHECK THIS
 
 function openLichessAnalysis() {
     if (typeof game !== 'undefined' && game.fen) {
         let currentFen = game.fen();
         let formattedFen = currentFen.replace(/ /g, '_');
-        let lichessURL = `https://lichess.org/analysis/${formattedFen}`;
+        let lichessURL = `https://lichess.org/analysis/`;
+        lichessURL = lichessURL + formattedFen;
         window.open(lichessURL, '_blank')
     } else {
         console.error("chess instance not found");
-        console.log("Alternatively, try copy-pasting the FEN or PGN into Lichess for current board analysis")
     }
 }
+

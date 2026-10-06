@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Chess Bot</title>
+        <title>Minimax Chess Bot</title>
         <link rel="preconnect" href="https://googleapis.com">
         <link rel="preconnect" href="https://gstatic.com" crossorigin>
         <link href="https://googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -55,7 +55,7 @@
                         </div>
 
                         <div class="button-group">
-                            <button id="start-button" class="btn btn-primary" onclick="location.reload()">New Game</button>
+                            <button id="start-button" class="btn btn-primary" onclick="newGameClicked()">New Game</button>
                             <button id="reset-button" class="btn btn-secondary" onclick="openLichessAnalysis()">Analysis</button>
                         </div>
                     </div>
@@ -69,8 +69,8 @@
                 <p>For this project, I used chessboard.js to display the board, and FastBitboardEngine to generate all the possible moves including castling, en passant, etc.</p>
                 <p>This program makes the best moves using a custom-made FEN evaluation algorithm. It parses the FEN string into an 8x8 grid using a for loop, and then runs it through all possible moves. </p>
                 <p>So, for example, the first ply (singular move) has a total of 20 possible moves/paths. On the second move, the number would increase to 400. And by the third ply calculation, there are over 8000 possible moves. Since this would take a very long time to calculate this, I decided to use a alpha-beta algorithm with minimax that largely cuts out the useless or bad moves.</p>
-                <div class="note-~box">
-                    <strong>Note: Note: The performance of this chess bot is reliant on the processing power. You can see how many moves deep it is searching, along with node information by checking out the console tab. (right-click -> Inspect -> switch over to console)</strong>
+                <div class="note-box">
+                    <p>Note: Note: The performance of this chess bot is reliant on the processing power. You can see how many moves deep it is searching, along with node information by checking out the console tab. (right-click -> Inspect -> switch over to console)</p>
                 </div>
                 <p>Below is an image showing how Minimax works.</p>
                 <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR1G2ebMkMBt9kj23uTDb2Ol3E6dhvZgtZiYnMgGoTLG5hZUBhtakq0qms:https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6f/Minimax.svg/500px-Minimax.svg.png%3Futm_source%3Den.wikipedia.org%26utm_campaign%3Dparser%26utm_content%3Dthumbnail&s">
