@@ -1,14 +1,14 @@
 :root {
-  --bg-color: #f4efeb;          
+  --bg-color: #92caffa2;          
   --surface-color: #fdfbf7;     
   --surface-alt: #eae4dc;       
   --text-primary: #0f172a;      
   --text-secondary: #475569;    
   --border-color: #0f172a;      
   
-  --primary-color: #334155;     
+  --primary-color: #3965a1;     
   --primary-hover: #1e293b;
-  --accent-stamp: #c84b31;      
+  --accent-stamp: #3145c8;      
 
   --radius-lg: 6px;
   --radius-full: 4px;
@@ -24,6 +24,15 @@
   padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
+
+
+h1 {
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif
+}
+
+ h2 {
+  font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+ }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -66,6 +75,7 @@ body {
   margin-bottom: 2rem;
   padding-bottom: 0.75rem;
   border-bottom: 2px solid var(--border-color);
+  font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
 }
 
 .site-header h1 {
@@ -122,7 +132,7 @@ body {
 }
 
 .tab-content {
-  width: 100%;
+  width: 130%;
 }
 
 .game-layout {
