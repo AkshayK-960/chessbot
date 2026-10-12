@@ -9,14 +9,20 @@ var $pgn =$('#pgn');
 
 var transpositionTable = {};
 var botColor = 'b';
-function newGameClicked() {
-    let promptAns = prompt("What color do you want to play as? \nPick `w` for White, or `b` for Black.");
-    if (promptAns == 'w') {
-        botColor = 'b'
-    } else if (promptAns == 'b') {
-        botColor = 'w';
-    }
 
+function newGameClicked() {
+    botColor = (botColor === 'b') ? 'w' : 'b';
+    game.reset();
+    transpositionTable = {};
+    killerMoves = [];
+    historyHeuristic = {};
+    currentZobristKey = computeZobristKey();
+    board.orientation(botColor === 'w' ? 'black' : 'white');
+    board.position(game.fen());
+    updateStatus();
+    if (game.turn() === botColor) {
+        window.setTimeout(makeBestMove, 250);
+    }
 }
 
 
