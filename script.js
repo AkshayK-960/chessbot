@@ -557,21 +557,20 @@ function quiesce(alpha, beta, isMaximizingPlayer, qDepth) {
 function findEvalStr() {
     var isMaximizing = (game.turn() === 'w');
     var evalScore = minimax(2, -Infinity, Infinity, isMaximizing);
+    
+    if (!isMaximizing) evalScore = -evalScore;
 
-    if(Math.abs(evalScore) > 900000) {
+    if (Math.abs(evalScore) > 900000) {
         var plies = 1000000 - Math.abs(evalScore);
-        var mateIn = Math.ceil(plies / 2)
-        var sign = evalScore > 0 ? '+' : '-'
+        var mateIn = Math.ceil(plies / 2);
+        var sign = evalScore > 0 ? '+' : '-';
         document.getElementById("eval").textContent = ("M" + sign + mateIn);
         return;
     }
-
     var evalUnits = (evalScore / 100).toFixed(1);
-    document.getElementById("eval").textContent = (evalUnits);
-    if(evalScore > 0) evalUnits = "+" + evalUnits
-}
-
-// 1. d4 Nf6 2. Bf4 Nd5 3. e3 Nxf4 4. exf4 Nc6 5. d5 Nb4 6. Qd4 Nxc2+ 7. Ke2 Nxd4+ 8. Kd3 CHECK THIS
+    if (evalScore > 0) evalUnits = "+" + evalUnits;
+    document.getElementById("eval").textContent = evalUnits;
+}   
 
 function openLichessAnalysis() {
     if (typeof game !== 'undefined' && game.fen) {
